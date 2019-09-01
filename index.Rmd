@@ -1,0 +1,171 @@
+---
+title: "[DM] Case Study - Przemoc w USA"
+author: "Patryk Nizio"
+date: "30 sierpnia 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# install_github("tidyverse/dplyr")
+# install.packages("devtools")
+# library("devtools")
+# install_github("vqv/ggbiplot")
+
+# library(tidyverse)
+library(dplyr)
+
+library(ggbiplot)
+library(ggplot2)
+
+library(usmap)
+
+dataset <- read.csv(file="./dataset/violenceDataset.csv", header=TRUE, sep=",")
+dataset <- subset(dataset, !is.na(nonViolPerPop))
+
+```
+
+## Wstęp
+
+### Problematyka
+
+Przemoc i przestępczość to dobrze znane problemy społeczne, wpływają na poziom życia i bezpieczeństwo obywateli. W samych Stanach Zjednoczonych w latach 1999-2014 zgineło podnad 185 tysiecy osób z użyciem broni palnej. Stany Zjednoczone mają również największy wskażnik uwięźionych na świecie. Blisko 2,3 miliona osób znajduję się w więzieniach co daje najwyższy wskażnik, 743 na 100,000 obywateli siedzi w więzieniu. W Polsce dla porównania wskażnik ten wynosi 218 na 100,000 obywateli (Dane z 2011, World Prison Population List).
+
+Rozumiejąc czynniki wpływające na wzrost przestępczości jesteśmy w stanie zmniejszać ilość przestępst a także wprowadzać działania prewencyjne w statystycznie najbardziej narażonych regionach. Predykcja przestępczości pozwala również na optymalne rozmieszczenie funkcionariuszy oraz efektywniejsze zarządzanie budżetem. 
+
+### Opis zbioru danych
+
+Opisywany zbiór danych łączy dane społeczno ekonomiczne ze spisu powszechnego z lat 90 oraz organów ściagania, ankiet i danych FBI z 1995 roku.
+Dane pochodzą z trzech źródeł: 
+
+- Creator: Michael Redmond (redmond@lasalle.edu); Computer Science; La Salle University; Philadelphia, PA, 19141, USA 
+- culled from 1990 US Census, 1995 US FBI Uniform Crime Report, 1990 US Law Enforcement Management and Administrative Statistics Survey, available from ICPSR at U of Michigan. 
+- Donor: Michael Redmond (redmond@lasalle.edu); Computer Science; La Salle University; Philadelphia, PA, 19141, USA
+
+
+Zbiór danych zawiera 147 atrybutów, w tym: 
+
+- 125 predykcyjnych
+- 4 nie predyckcyjnych (nazwa gminy, kod stanu, kod regionu i gminy)
+- 18 potencjalnych celów
+
+
+W potencjych atrybuty do modelowania znajdują sie:
+
+- murders: liczba zabójstw w 1995 r.
+- murdPerPop: liczba morderstw na 100 000 populacji 
+- rapes: liczba gwałtów w 1995 r.
+- rapesPerPop: liczba gwałtów na 100 000 populacji 
+- robberies: liczba napadów w 1995 r.
+- robbbPerPop: liczba rozbojów na 100 000 populacji 
+- assaults: liczba napadów w 1995 r.
+- assaultPerPop: liczba ataków na 100 000 populacji 
+- burgl: liczba włamań w 1995 r.
+- burglPerPop: liczba włamań na 100 000 populacji 
+- larcenies: liczba kradzieży w 1995 r. 
+- larcPerPop: liczba kradzieży na 100 000 populacji 
+- autoTheft: liczba kradzieży samochodowych w 1995 r.
+- autoTheftPerPop: liczba kradzieży samochodowych na 100 000 populacji 
+- arsons: liczba podpaleń w 1995 r. 
+- arsonsPerPop: liczba podpaleń na 100 000 populacji 
+- ViolentCrimesPerPop: łączna liczba brutalnych przestępstw na 100 000 mieszkańców 
+- nonViolPerPop: całkowita liczba przestępstw bez użycia przemocy na 100 000 mieszkańców 
+
+
+W poniższej pracy skupiono się na liczbach przestępst bez użycia przemocy na 100 000 mieszkańców. 
+
+
+
+## Czyszczenie i analiza danych
+
+Dane zawierały duże braki. Ze zbioru zostały usunięte te wiersze które zawierały braki w zmiennej modelowanej.
+Ze względu na wiele brakujących wartości przy części atrybutów nie zdecydowano się na oczyszczenie całego zbioru danych, tylko 111 rekordów zawierało pełny zbior danych.
+Pozostałe wartosci ze zwględu na dużą ilość braków w wielu atrybutach były pomijane podczas analizy.
+
+
+Rozbieżność danych jest stosunkowo duża, najmniesza wartość to 116.8 a najwększa 27119.8 przestępstw na 100 000 mieszkańców.
+Średnia wynosi 4908.2 przestępstw bez uzycia przemocy na 100 000 mieszkańców.
+
+
+```{r}
+nonViolOriginal <- dataset$nonViolPerPop
+summary(dataset$nonViolPerPop)
+```
+
+### Wykresy
+
+
+```{r}
+
+ggplot(dataset, aes(x=nonViolOriginal)) + geom_histogram(color="black", fill="white", bins=50) + ggtitle("Histogram - liczba przestępstw bez użycia przemocy na 100 000 mieszkańców") + ylab("Licznosć") + xlab("Liczba przestępstw bez użycia przemocy na 100 000 mieszkańców")
+
+```
+
+
+Wykres pudełkowy liczby przestępsw bez uzycia przemocy na 100,000 mieszkańców na tle innych przestępstw.
+
+```{r}
+
+axName_BP_0 <- c("Bez przemocy", "Brutalne", "Morderstwa", "Gwałty", "Rozboje", "Włamania", "Kradzieże", "Kradzieże aut")
+
+par(mar=c(5,10,4,2)+.1)
+boxplot(dataset$nonViolPerPop, dataset$ViolentCrimesPerPop, dataset$murdPerPop, dataset$rapesPerPop, dataset$robbbPerPop, dataset$burglPerPop, dataset$larcPerPop, dataset$autoTheftPerPop, names = axName_BP_0, border = "brown",horizontal = FALSE, notch = TRUE, las = 2, col = "orange", yaxt="n", at=1:8, main="Przestępstwa na 100 000 mieszkańców") 
+ 
+```
+
+
+```{r}
+
+usaState <- aggregate(dataset$nonViolPerPop, by=list(state=dataset$state), FUN=mean)
+
+
+plot_usmap(regions = "states", data = usaState, values = "x", include = usaState$category) + labs(title = "Stany Zjednoczone", subtitle = "Średnia liczba przestępstwa bez użycia przemocy w poszczególnych stanach") + theme(panel.background = element_rect(colour = "black", fill = "lightblue")) +   scale_fill_continuous(low = "white", high ="darkblue", 
+                          name = "Przestępstwa (średnia)",label = scales::comma,
+                          limits = c(min(usaState$x)-1000,max(usaState$x))) + theme(legend.position = "right")
+
+```
+
+Na mapie mozemy zauważyć że wyższy wskażnik średniej przestępczości występuje w stanach południowych (Arizona, Nowy Meksyk, Lousiana, Floryda,Georgia, Karolina pólnocna i południowa) oraz w stanach Waszyngton, Maryland. 
+
+Przestępstwa bez użycia przemocy są to wszystkie przestępstwa w których ofiary nie stały się przedmiotem przemocy, wliczamy w to przestępstwa narkotykowe, kradzieże, oszustwa itp.
+
+
+```{r}
+
+pcaData <- prcomp(na.omit(dataset[,c(6:60),147]), center = TRUE,scale. = TRUE)
+
+summary(pcaData)
+```
+
+
+```{r}
+ggbiplot(pcaData, alpha = 0, ellipse=TRUE, obs.scale = 1, var.scale = 1)
+```
+
+
+## Model I - PCA
+
+Analiza głównych składowych (ang. principal component analysis, PCA) – jedna ze statystycznych metod analizy czynnikowej. Zbiór danych składający się z N obserwacji, z których każda obejmuje K zmiennych, można interpretować jako chmurę N punktów w przestrzeni K-wymiarowej. Celem PCA jest taki obrót układu współrzędnych, aby maksymalizować w pierwszej kolejności wariancję pierwszej współrzędnej, następnie wariancję drugiej współrzędnej itd.
+
+Tak przekształcone wartości współrzędnych nazywane są ładunkami wygenerowanych czynników (składowych głównych). W ten sposób konstruowana jest nowa przestrzeń obserwacji, w której najwięcej zmienności wyjaśniają początkowe czynniki.
+
+
+
+
+## Model II - Regresja wieloraka
+
+Lorem ipsum
+
+## Model III - Klasteryzacja
+
+Lorem ipsum
+
+## Wnioski i uwagi
+
+Lorem ipsum
+
+## Żródła
+
+* https://upload.wikimedia.org/wikipedia/commons/d/d3/Felony_Sentences_in_State_Courts.pdf
+* World Prison Population List: https://www.prisonstudies.org/sites/default/files/resources/downloads/wppl_9.pdf 
