@@ -18,6 +18,8 @@ library(dplyr)
 
 library(ggbiplot)
 library(ggplot2)
+library(Metrics)
+library(corrplot)
 
 library(usmap)
 
@@ -128,13 +130,47 @@ plot_usmap(regions = "states", data = usaState, values = "x", include = usaState
 
 Na mapie mozemy zauważyć że wyższy wskażnik średniej przestępczości występuje w stanach południowych (Arizona, Nowy Meksyk, Lousiana, Floryda,Georgia, Karolina pólnocna i południowa) oraz w stanach Waszyngton, Maryland. 
 
-Przestępstwa bez użycia przemocy są to wszystkie przestępstwa w których ofiary nie stały się przedmiotem przemocy, wliczamy w to przestępstwa narkotykowe, kradzieże, oszustwa itp.
+Przestępstwa bez użycia przemocy są to wszystkie przestępstwa w których ofiary nie stały się przedmiotem przemocy, wliczamy w to przestępstwa narkotykowe, przestępstwa majątkowe, kradzieże, oszustwa itp.
+
+Najbezpieczniejsze hrabstwa znajdowały sie w stanach Maryland i Pensylwani.
+
+```{r}
+df2 <- dataset %>% select(6:130,147)
+dataCorrelation <- cor(na.omit(df2), method = "pearson")
+
+# dataCorrelation
+# corrplot(dataCorrelation, method = "number", order = "hclust", type = "upper")
+
+```
+
+Największy wpływ na przestępstwa bez przemocy mają wpływ następujące atrybuty (według korelacji):
+
+- PctPopUnderPov: odsetek osób poniżej poziomu ubóstwa
+- racepctblack: procent populacji Afro-amerykanów 
+- MalePctDivorce: odsetek mężczyzn rozwiedzionych
+- FemalePctDiv: odsetek kobiet rozwiedzionych 
+- TotalPctDiv: procent rozwiedzionej populacji 
+- PctKidsBornNeverMar: odsetek dzieci urodzonych bez związku małżeńskiego
+- PctHousNoPhone: procent zajętych mieszkań bez telefonu 
+- Pct Bezrobotni: odsetek osób w wieku 16 lat i starszych, na rynku pracy i bezrobotnych
+- pctWPubAsst: odsetek gospodarstw domowych z dochodami z pomocy publicznej w 1989 r.
+- PctVacantBoarded: procent wolnych mieszkań, które są zabite deskami
+- PctWOFullPlumb: procent mieszkań bez kompletnych instalacji hydraulicznych 
+- medIncome: mediana dochodu gospodarstwa domowego 
+- pctWInvInc: odsetek gospodarstw domowych z dochodami z inwestycji / czynszu w 1989 r.
+- PctEmploy: odsetek osób w wieku 16 lat i starszych, które są zatrudnione 
+- pctWWage: odsetek gospodarstw domowych o dochodach z wynagrodzenia w 1989 r.
+
+## Model I - PCA
+
+Analiza głównych składowych (ang. principal component analysis, PCA) – jedna ze statystycznych metod analizy czynnikowej. Zbiór danych składający się z N obserwacji, z których każda obejmuje K zmiennych, można interpretować jako chmurę N punktów w przestrzeni K-wymiarowej. Celem PCA jest taki obrót układu współrzędnych, aby maksymalizować w pierwszej kolejności wariancję pierwszej współrzędnej, następnie wariancję drugiej współrzędnej itd.
+
+Tak przekształcone wartości współrzędnych nazywane są ładunkami wygenerowanych czynników (składowych głównych). W ten sposób konstruowana jest nowa przestrzeń obserwacji, w której najwięcej zmienności wyjaśniają początkowe czynniki.
 
 
 ```{r}
 
-pcaData <- prcomp(na.omit(dataset[,c(6:60),147]), center = TRUE,scale. = TRUE)
-
+pcaData <-  prcomp(na.omit(dataset[,c(6:60),147]), center = TRUE,scale. = TRUE)
 summary(pcaData)
 ```
 
@@ -144,18 +180,67 @@ ggbiplot(pcaData, alpha = 0, ellipse=TRUE, obs.scale = 1, var.scale = 1)
 ```
 
 
-## Model I - PCA
-
-Analiza głównych składowych (ang. principal component analysis, PCA) – jedna ze statystycznych metod analizy czynnikowej. Zbiór danych składający się z N obserwacji, z których każda obejmuje K zmiennych, można interpretować jako chmurę N punktów w przestrzeni K-wymiarowej. Celem PCA jest taki obrót układu współrzędnych, aby maksymalizować w pierwszej kolejności wariancję pierwszej współrzędnej, następnie wariancję drugiej współrzędnej itd.
-
-Tak przekształcone wartości współrzędnych nazywane są ładunkami wygenerowanych czynników (składowych głównych). W ten sposób konstruowana jest nowa przestrzeń obserwacji, w której najwięcej zmienności wyjaśniają początkowe czynniki.
-
-
-
+Analiza składowych wykazała że największy wpływ na dane mają liczebność gospodarstw, 
 
 ## Model II - Regresja wieloraka
 
-Lorem ipsum
+Przy tworzeniu modelu Regresji wielorakiej skupiono sie na 18 najbardziej wpływowowych czynnikach (wytyczonych poprzez analize PCA).
+
+```{r}
+
+df <- dataset
+
+
+mlr  <- lm(nonViolPerPop ~ 
+householdsize +
+racepctblack +
+racePctWhite +
+racePctAsian +
+racePctHisp +
+agePct12t21 +
+agePct12t29 +
+agePct16t24 +
+agePct65up +
+numbUrban +
+pctUrban + 
+medIncome +
+pctWWage +
+pctWFarmSelf +
+pctWInvInc +
+pctWSocSec +
+pctWPubAsst, data = df)
+
+
+summary(mlr)
+
+layout(matrix(c(1,2,3,4),2,2)) 
+plot(mlr)
+
+```
+
+```{r}
+mlrCoe <- coefficients(mlr)
+
+# modelMlr <- df$population * mlrCoe[1] + df$householdsize * mlrCoe[2] + df$racepctblack * mlrCoe[3] + df$racePctWhite * mlrCoe[4] + df$racePctAsian * mlrCoe[5] + df$racePctHisp * mlrCoe[6] + df$agePct12t21 * mlrCoe[7] + df$agePct12t29 * mlrCoe[8] + df$agePct16t24 * mlrCoe[9] + df$agePct65up * mlrCoe[10] + df$numbUrban * mlrCoe[11] + df$pctUrban * mlrCoe[12] + df$medIncome * mlrCoe[13] + df$pctWWage * mlrCoe[14] + df$pctWFarmSelf * mlrCoe[15] + df$pctWInvInc * mlrCoe[16] + df$pctWSocSec * mlrCoe[17] + df$pctWPubAsst * mlrCoe[18]  
+
+modelMlr <- predict.lm(mlr, df)
+
+
+cor(df$nonViolPerPop, modelMlr)
+
+```
+
+```{r}
+
+hist(mlr$residuals, breaks = 24, main = "Histogram reszt", xlab = "Odchylenie modelu", ylab = "Wystąpienia")
+
+mse(df$nonViolPerPop,modelMlr)
+
+
+mean(mlr$residuals^2)
+
+```
+
 
 ## Model III - Klasteryzacja
 
