@@ -1,8 +1,11 @@
 ---
-title: "[DM] Case Study - Przemoc w USA"
+title: '[DM] Case Study - Przemoc w USA'
 author: "Patryk Nizio"
 date: "30 sierpnia 2019"
-output: html_document
+output:
+  word_document: default
+  pdf_document: default
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -20,6 +23,7 @@ library(ggbiplot)
 library(ggplot2)
 library(Metrics)
 library(corrplot)
+library(ie2misc)
 
 library(usmap)
 
@@ -32,7 +36,7 @@ dataset <- subset(dataset, !is.na(nonViolPerPop))
 
 ### Problematyka
 
-Przemoc i przestępczość to dobrze znane problemy społeczne, wpływają na poziom życia i bezpieczeństwo obywateli. W samych Stanach Zjednoczonych w latach 1999-2014 zgineło podnad 185 tysiecy osób z użyciem broni palnej. Stany Zjednoczone mają również największy wskażnik uwięźionych na świecie. Blisko 2,3 miliona osób znajduję się w więzieniach co daje najwyższy wskażnik, 743 na 100,000 obywateli siedzi w więzieniu. W Polsce dla porównania wskażnik ten wynosi 218 na 100,000 obywateli (Dane z 2011, World Prison Population List).
+Przemoc i przestępczość to dobrze znane problemy społeczne, wpływają na poziom życia i bezpieczeństwo obywateli. W samych Stanach Zjednoczonych w latach 1999-2014 zgineło podnad 185 tysiecy osób z użyciem broni palnej. Stany Zjednoczone mają również największy wskażnik uwięźionych na świecie. Blisko 2,3 miliona osób znajduję się w więzieniach co daje najwyższy wskażnik na świecie, 743 na 100,000 obywateli znajduje sie w więzieniach. W Polsce dla porównania wskażnik ten wynosi 218 na 100,000 obywateli (Dane z 2011, World Prison Population List).
 
 Rozumiejąc czynniki wpływające na wzrost przestępczości jesteśmy w stanie zmniejszać ilość przestępst a także wprowadzać działania prewencyjne w statystycznie najbardziej narażonych regionach. Predykcja przestępczości pozwala również na optymalne rozmieszczenie funkcionariuszy oraz efektywniejsze zarządzanie budżetem. 
 
@@ -138,12 +142,10 @@ Najbezpieczniejsze hrabstwa znajdowały sie w stanach Maryland i Pensylwani.
 df2 <- dataset %>% select(6:130,147)
 dataCorrelation <- cor(na.omit(df2), method = "pearson")
 
-# dataCorrelation
 # corrplot(dataCorrelation, method = "number", order = "hclust", type = "upper")
-
 ```
 
-Największy wpływ na przestępstwa bez przemocy mają wpływ następujące atrybuty (według korelacji):
+Największy wpływ na przestępstwa bez przemocy mają następujące atrybuty (według korelacji):
 
 - PctPopUnderPov: odsetek osób poniżej poziomu ubóstwa
 - racepctblack: procent populacji Afro-amerykanów 
@@ -152,7 +154,7 @@ Największy wpływ na przestępstwa bez przemocy mają wpływ następujące atry
 - TotalPctDiv: procent rozwiedzionej populacji 
 - PctKidsBornNeverMar: odsetek dzieci urodzonych bez związku małżeńskiego
 - PctHousNoPhone: procent zajętych mieszkań bez telefonu 
-- Pct Bezrobotni: odsetek osób w wieku 16 lat i starszych, na rynku pracy i bezrobotnych
+- PctUnemployed: odsetek osób w wieku 16 lat i starszych, na rynku pracy i bezrobotnych
 - pctWPubAsst: odsetek gospodarstw domowych z dochodami z pomocy publicznej w 1989 r.
 - PctVacantBoarded: procent wolnych mieszkań, które są zabite deskami
 - PctWOFullPlumb: procent mieszkań bez kompletnych instalacji hydraulicznych 
@@ -170,46 +172,53 @@ Tak przekształcone wartości współrzędnych nazywane są ładunkami wygenerow
 
 ```{r}
 
-pcaData <-  prcomp(na.omit(dataset[,c(6:60),147]), center = TRUE,scale. = TRUE)
-summary(pcaData)
+pcaData <-  prcomp(na.omit(dataset[,c(6:129,147)]), scale = TRUE)
 ```
 
+Rozkład PCA wskazuje że czynnik pierwszy wyjaśnia zmienne w 20.9%, poniżej przedstawiono wykres osuwiska wartości własnych.
 
 ```{r}
-ggbiplot(pcaData, alpha = 0, ellipse=TRUE, obs.scale = 1, var.scale = 1)
+plot(pcaData, type='l')
 ```
 
 
-Analiza składowych wykazała że największy wpływ na dane mają liczebność gospodarstw, 
+Osie są widziane jako strzałki pochodzące od punktu środkowego oraz ich udział w zmiennych PC1 i PC2.
+Poniżej dodoatkowo wykres dla zmiennych PC3 i PC4. Wykresy wskazuja na to że wiele zmiennych jest z sobą powiązanych.
+
+```{r}
+ggbiplot(pcaData, alpha = 1,var.axes=TRUE, ellipse=TRUE, obs.scale = 1, var.scale = 1)
+ggbiplot(pcaData, var.axes=TRUE,choices = c(3:4), alpha = 1, ellipse=TRUE, obs.scale = 0, var.scale = 1)
+```
+
+
+Macierz przekształcenia:
+
+```{r}
+print(pcaData$rotation[1:10,1:4])
+```
+
+
 
 ## Model II - Regresja wieloraka
 
-Przy tworzeniu modelu Regresji wielorakiej skupiono sie na 18 najbardziej wpływowowych czynnikach (wytyczonych poprzez analize PCA).
+Przy tworzeniu modelu Regresji wielorakiej skupiono sie na 15 najbardziej wpływowowych czynnikach (w tym wytyczonych poprzez analize PCA).
 
 ```{r}
-
-df <- dataset
-
-
-mlr  <- lm(nonViolPerPop ~ 
-householdsize +
+mlr <- lm(nonViolPerPop ~ PctPopUnderPov +
 racepctblack +
-racePctWhite +
-racePctAsian +
-racePctHisp +
-agePct12t21 +
-agePct12t29 +
-agePct16t24 +
-agePct65up +
-numbUrban +
-pctUrban + 
+MalePctDivorce +
+FemalePctDiv +
+TotalPctDiv +
+PctKidsBornNeverMar +
+PctHousNoPhone +
+PctUnemployed +
+pctWPubAsst +
+PctVacantBoarded +
+PctWOFullPlumb +
 medIncome +
-pctWWage +
-pctWFarmSelf +
 pctWInvInc +
-pctWSocSec +
-pctWPubAsst, data = df)
-
+PctEmploy +
+pctWWage, data = dataset)
 
 summary(mlr)
 
@@ -218,15 +227,13 @@ plot(mlr)
 
 ```
 
+Korelacja między modelami wynosi 0.698 co stanowi zadowalajacy wynik, w danych występuje jednak rozbieżność w wartosciach co potęguje wzrost błędów dla częsci wartości. Są to najprawdopodobniej przypadki które silnie odbiegają od modelu np. przypadki skrajne lub anomalia.
+
 ```{r}
 mlrCoe <- coefficients(mlr)
+modelMlr <- predict.lm(mlr, dataset)
 
-# modelMlr <- df$population * mlrCoe[1] + df$householdsize * mlrCoe[2] + df$racepctblack * mlrCoe[3] + df$racePctWhite * mlrCoe[4] + df$racePctAsian * mlrCoe[5] + df$racePctHisp * mlrCoe[6] + df$agePct12t21 * mlrCoe[7] + df$agePct12t29 * mlrCoe[8] + df$agePct16t24 * mlrCoe[9] + df$agePct65up * mlrCoe[10] + df$numbUrban * mlrCoe[11] + df$pctUrban * mlrCoe[12] + df$medIncome * mlrCoe[13] + df$pctWWage * mlrCoe[14] + df$pctWFarmSelf * mlrCoe[15] + df$pctWInvInc * mlrCoe[16] + df$pctWSocSec * mlrCoe[17] + df$pctWPubAsst * mlrCoe[18]  
-
-modelMlr <- predict.lm(mlr, df)
-
-
-cor(df$nonViolPerPop, modelMlr)
+print(cor(dataset$nonViolPerPop, modelMlr))
 
 ```
 
@@ -234,21 +241,54 @@ cor(df$nonViolPerPop, modelMlr)
 
 hist(mlr$residuals, breaks = 24, main = "Histogram reszt", xlab = "Odchylenie modelu", ylab = "Wystąpienia")
 
-mse(df$nonViolPerPop,modelMlr)
-
-
-mean(mlr$residuals^2)
+mape(dataset$nonViolPerPop,modelMlr)
 
 ```
 
 
 ## Model III - Klasteryzacja
 
-Lorem ipsum
+Jako metodę klasteryzacji wybrano metodę K-średnich
+Poniżej wykresy dla klasteryzacji względem wybranych atrybutów: zarobki, rozwody, procent dochodów z pomocy społecznej, udziału ludności afroamerykńskiej i populacji żyjacej poniżej poziomu ubóstwa. 
+
+```{r, echo=FALSE}
+
+m=as.matrix(cbind(dataset$pctWPubAsst,dataset$medIncome, dataset$TotalPctDiv, dataset$PctUnemployed, dataset$racepctblack, dataset$PctPopUnderPov,ncol=6))
+cl=(kmeans(m, 3))
+
+
+df <- dataset
+df$cluster <- factor(cl$cluster)
+centers=as.data.frame(cl$centers)
+
+
+ggplot(data=df, aes(x=pctWPubAsst, y=nonViolPerPop, color=cluster )) +  geom_point() + ggtitle("Przestępczość / Dochody z pomocy społecznej [%]")
+
+
+ggplot(data=df, aes(x=PctUnemployed, y=nonViolPerPop, color=cluster )) +  geom_point() + ggtitle("Przestępczość / Bezrobocie [%]") 
+
+ggplot(data=df, aes(x=medIncome, y=nonViolPerPop, color=cluster )) +  geom_point() + ggtitle("Przestępczość / Mediana zarobków [%]")
+
+ggplot(data=df, aes(x=TotalPctDiv, y=nonViolPerPop, color=cluster )) +  geom_point() + ggtitle("Przestępczość / Rozwody [%]")
+
+ggplot(data=df, aes(x=PctPopUnderPov, y=nonViolPerPop, color=cluster )) +  geom_point() + ggtitle("Przestępczość / Ludność poniżej poziomu ubóstwa [%]")
+
+ggplot(data=df, aes(x=racepctblack, y=nonViolPerPop, color=cluster )) +  geom_point() + ggtitle("Przestępczość / Ludność Afroamerykańska [%]")
+
+```
+
+Na podstawie tych wykresów możemy wnioskować że nawjęcej przestępst dochodzi w regionach biedniejszych, wiąże się to z dużym bezrobociem i problemami społecznymi. Ludzie w tych dzielnicach często kradną lub handluja narkotykami przez co wskaźnik przestępst (bez uzycia przemocy) jest tak wysoki.
 
 ## Wnioski i uwagi
 
-Lorem ipsum
+Dane zawierały dużą liczbę atrybutów, do wyznaczenia głównych składowych użyto PCA. Model regresji wielorakiej dobrze modelował zmienną jednak zawierał również wysoki błąd dla części przypadków. Dzieki metodom klasteryzacji udało podzielić się grupę względem wybranych składowych. Przedstawione modele umożliwiają rozpoznanie miejsc bardziej narażonych na przestępstwa (w analizie skupiono się na przestępstach bez użycia przemocy jednak pozostałe przestępstwa mają podobne ugruntowanie).
+
+
+Przypuszczalnie zastosowanie sieci neuronowej było by najlpszą alternatywą do stworzenia wartościowego modelu.
+
+
+Wyciągajac wnioski możemy uznać że w biedniejszych regionach przestępstwa są częstsze ze względu na ogólne ubóstwo i problemy społeczno-ekonomiczne. Ludność zamożniejsza dużo rzadziej popełnia przestępstwa natomiast regiony w ktorych panuje ubóstwo i bezrobocie są bardziej narażone na przestępstwa takie jak kradzieże, podpalenia lub przestępstwa majątkowe i narkotykowe.
+
 
 ## Żródła
 
